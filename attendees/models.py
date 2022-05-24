@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.urls import reverse
 
@@ -24,6 +25,12 @@ class Attendee(models.Model):
 
     def get_api_url(self):
         return reverse("api_show_attendee", kwargs={"pk": self.pk})
+
+    def create_badge(self):
+        try:
+            self.badge
+        except ObjectDoesNotExist:
+            Badge.objects.create(attendee=self, created=datetime)
 
 
 class Badge(models.Model):
