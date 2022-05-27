@@ -29,8 +29,8 @@ class Attendee(models.Model):
     def create_badge(self):
         try:
             self.badge
-        except ObjectDoesNotExist:
-            Badge.objects.create(attendee=self, created=datetime)
+        except:
+            Badge.objects.create(attendee=self)
 
 
 class Badge(models.Model):

@@ -1,8 +1,38 @@
+import re
 from django.http import JsonResponse
-
+from common.json import ModelEncoder
 from .models import Attendee
+from django.views.decorators.http import require_http_methods
+from events.models import Conference
+import json
+from events.api_views import ConferenceDetailEncoder
 
 
+class AttendeeListEncoder(ModelEncoder):
+    model = Attendee
+    properties = [
+        "name",
+    ]
+
+
+class AttendeeDetailEncoder(ModelEncoder):
+    model = Attendee
+    properties = [
+        "email",
+        "name",
+        "company_name",
+        "created",
+    ]
+
+    def get_extra_data(self, o):
+        return {
+            "conference": {
+                "name": o.conference.name,
+            },
+        }
+
+
+@require_http_methods(["GET", "POST"])
 def api_list_attendees(request, conference_id):
     """
     Lists the attendees names and the link to the attendee
@@ -23,17 +53,44 @@ def api_list_attendees(request, conference_id):
         ]
     }
     """
-    attendees = [
-        {
-            "name": a.name,
-            "href": a.get_api_url(),
-        }
-        for a in Attendee.objects.filter(conference=conference_id)
-    ]
+    # attendees = [
+    #     {
+    #         "name": a.name,
+    #         "href": a.get_api_url(),
+    #     }
+    #     for a in Attendee.objects.filter(conference=conference_id)
+    # ]
 
-    return JsonResponse({"attendees": attendees})
+    # return JsonResponse({"attendees": attendees})
+    if request.method == "GET":
+        attendees = Attendee.objects.all()
+        return JsonResponse(
+            {"attendees": attendees},
+            encoder=AttendeeListEncoder,
+        )
+    else:
+
+        content = json.loads(request.body)
+
+        # Get the Conference object and put it in the content dict
+        try:
+            conference = Conference.objects.get(id=conference_id)
+            content["conference"] = conference
+        except Conference.DoesNotExist:
+            return JsonResponse(
+                {"message": "Invalid conference id"},
+                status=400,
+            )
+
+        attendee = Attendee.objects.create(**content)
+        return JsonResponse(
+            attendee,
+            encoder=AttendeeDetailEncoder,
+            safe=False,
+        )
 
 
+@require_http_methods(["DELETE", "GET", "PUT"])
 def api_show_attendee(request, pk):
     """
     Returns the details for the Attendee model specified
@@ -54,17 +111,39 @@ def api_show_attendee(request, pk):
         }
     }
     """
-    attendee = Attendee.objects.get(id=pk)
+    if request.method == "GET":
+        attendee = Attendee.objects.get(id=pk)
 
-    return JsonResponse(
-        {
-            "email": attendee.email,
-            "name": attendee.name,
-            "company_name": attendee.company_name,
-            "created": attendee.created,
-            "conference": {
-                "name": attendee.conference.name,
-                "href": attendee.conference.get_api_url(),
-            },
-        }
-    )
+        return JsonResponse(
+            attendee,
+            encoder=AttendeeDetailEncoder,
+            safe=False,
+        )
+    elif request.method == "DELETE":
+        count, _ = Attendee.objects.filter(id=pk).delete()
+        print(Attendee.objects.filter(id=pk).delete())
+        return JsonResponse({"deleted": count > 0})
+    else:
+        # copied from create
+        content = json.loads(request.body)
+        try:
+            # new code
+            if "conference" in content:
+                conference = Conference.objects.get(id=content["conference"])
+                content["conference"] = conference
+        except Conference.DoesNotExist:
+            return JsonResponse(
+                {"message": "Invalid conference"},
+                status=400,
+            )
+
+        # new code
+        Attendee.objects.filter(id=pk).update(**content)
+
+        # copied from get detail
+        attendee = Attendee.objects.get(id=pk)
+        return JsonResponse(
+            attendee,
+            encoder=AttendeeDetailEncoder,
+            safe=False,
+        )
