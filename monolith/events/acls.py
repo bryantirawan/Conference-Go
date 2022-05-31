@@ -24,9 +24,7 @@ def get_lat_and_lon(city, state):
 
 def get_weather_data(lat, lon):
     url = f"https://api.openweathermap.org/data/2.5/weather?lat="
-
     params = {"lat": lat, "lon": lon, "api": OPEN_WEATHER_API_KEY}
-
     weather = requests.get(
         f"{url}{lat}&lon={lon}&appid={OPEN_WEATHER_API_KEY}", params=params
     ).json()
