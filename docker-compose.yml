@@ -1,0 +1,42 @@
+version: "3.7"
+services:
+  monolith:
+    build:
+      context: ./monolith
+      dockerfile: ./Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./monolith:/app
+    depends_on:
+      - rabbitmq
+  attendees_microservice:
+    build:
+      context: ./attendees_microservice
+      dockerfile: ./Dockerfile.dev
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./attendees_microservice:/app
+  attendees_account_info:
+    build:
+      context: ./attendees_microservice
+      dockerfile: ./Dockerfile.account_info.dev
+    volumes:
+      - ./attendees_microservice:/app
+  presentation_workflow:
+    build:
+      context: ./presentation_workflow
+      dockerfile: ./Dockerfile.dev
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./presentation_workflow:/app
+  rabbitmq:
+    image: rabbitmq:3
+  mail:
+    image: mailhog/mailhog
+    environment:
+      - MH_SMTP_BIND_ADDR=0.0.0.0:25
+    ports:
+      - "3000:8025"

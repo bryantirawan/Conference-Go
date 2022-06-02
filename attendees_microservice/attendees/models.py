@@ -8,6 +8,15 @@ class ConferenceVO(models.Model):
     name = models.CharField(max_length=200)
 
 
+class AccountVO(models.Model):
+    # import_href = models.CharField(max_length=200, unique=True)
+    email = models.EmailField()
+    first_name = models.CharField(max_length=200)
+    last_name = models.CharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+    updated = models.DateTimeField(auto_now_add=True)
+
+
 class Attendee(models.Model):
     """
     The Attendee model represents someone that wants to attend
@@ -18,7 +27,6 @@ class Attendee(models.Model):
     name = models.CharField(max_length=200)
     company_name = models.CharField(max_length=200, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
-
     conference = models.ForeignKey(
         ConferenceVO,
         related_name="attendees",

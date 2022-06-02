@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+
 from .models import Conference, Location, State
 
 

@@ -4,6 +4,7 @@ from .models import Presentation
 import json
 from django.views.decorators.http import require_http_methods
 from events.models import Conference
+import pika
 
 
 class PresentationDetailEncoder(ModelEncoder):
@@ -172,3 +173,63 @@ def api_show_presentation(request, pk):
             encoder=PresentationDetailEncoder,
             safe=False,
         )
+
+
+def send_approval_message(contact_info):
+    parameters = pika.ConnectionParameters(host="rabbitmq")
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.queue_declare(queue="presentation_approvals")
+    channel.basic_publish(
+        exchange="",
+        routing_key="presentation_approvals",
+        body=json.dumps(contact_info),
+    )
+    connection.close()
+
+
+def send_rejection_message(contact_info):
+    parameters = pika.ConnectionParameters(host="rabbitmq")
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.queue_declare(queue="presentation_rejections")
+    channel.basic_publish(
+        exchange="",
+        routing_key="presentation_rejections",
+        body=json.dumps(contact_info),
+    )
+    connection.close()
+
+
+@require_http_methods(["PUT"])
+def api_approve_presentation(request, pk):
+    presentation = Presentation.objects.get(id=pk)
+    presentation.approve()
+    contact_info = {
+        "presenter_name": presentation.presenter_name,
+        "presenter_email": presentation.presenter_email,
+        "title": presentation.title,
+    }
+    send_approval_message(contact_info)
+    return JsonResponse(
+        presentation,
+        encoder=PresentationDetailEncoder,
+        safe=False,
+    )
+
+
+@require_http_methods(["PUT"])
+def api_reject_presentation(request, pk):
+    presentation = Presentation.objects.get(id=pk)
+    presentation.reject()
+    contact_info = {
+        "presenter_name": presentation.presenter_name,
+        "presenter_email": presentation.presenter_email,
+        "title": presentation.title,
+    }
+    send_rejection_message(contact_info)
+    return JsonResponse(
+        presentation,
+        encoder=PresentationDetailEncoder,
+        safe=False,
+    )
